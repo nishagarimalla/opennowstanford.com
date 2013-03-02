@@ -1,0 +1,333 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<title>OpenNow @ Stanford</title>
+	<link rel="stylesheet" href="css/normalize.css" type="text/css" media="screen">
+	<link rel="stylesheet" href="css/grid.css" type="text/css" media="screen">
+	<link rel="stylesheet" href="css/style.css" type="text/css" media="screen">
+	<link href='http://fonts.googleapis.com/css?family=Nunito:400,300,700' rel='stylesheet' type='text/css'>
+	<script src="http://code.jquery.com/jquery-latest.js"></script>
+	<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?libraries=geometry&sensor=false"></script>
+	<meta name="viewport" content="width=device-width, initial-scale = 1.0">
+</head>
+
+
+<body onLoad="initGeolocation();   ">
+	<div class="container clearfix">
+		<div id="logo" class="grid_12">
+			<h1>What's OpenNow @ Stanford?</h1>
+		</div>
+		<div id="featured-cupcake" class="grid_8 ">
+	
+			<p><span id="jname"></span><br /></p>
+		
+<script type="text/javascript"> 
+
+	
+	         
+   function initGeolocation(){
+   		if(navigator.geolocation){
+    		navigator.geolocation.getCurrentPosition( success, fail );
+        }
+    	else{
+        	alert("Sorry, your browser does not support geolocation services.");
+        }
+	}
+    var directionDisplay;
+    var directionsService = new google.maps.DirectionsService();
+    var map;
+    
+    function success(position) {
+    	directionsDisplay = new google.maps.DirectionsRenderer();
+      	coords = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+      	var myOptions = {
+        	zoom:12,
+        	mapTypeId: google.maps.MapTypeId.ROADMAP,
+        	center: coords
+      	}
+      	map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+      	directionsDisplay.setMap(map);
+     	loadAndUpdateJSON();
+ 	}
+     
+    function roundToHalf(value) { 
+	   var converted = parseFloat(value); // Make sure we have a number 
+	   var decimal = (converted - parseInt(converted, 10)); 
+	   decimal = Math.round(decimal * 10); 
+	   if (decimal == 5) { return (parseInt(converted, 10)+0.5); } 
+	   if ( (decimal < 3) || (decimal > 7) ) { 
+		  return Math.round(converted); 
+	   } else {
+		  return (parseInt(converted, 10)+0.5); 
+	   } 
+	} 
+    
+    function calcRoute(addressString) {
+    	var start = coords;
+     	var end = "4312 Valley View Dr, Little Rock, AR";
+     	if(addressString){
+     		end=addressString+", Stanford, CA";
+     	}
+      	var request = {
+        	origin:start,
+        	destination:end,
+        	travelMode: google.maps.TravelMode.WALKING
+      	};
+      	directionsService.route(request, function(result, status) {
+			if (status == google.maps.DirectionsStatus.OK) {
+				directionsDisplay.setDirections(result);
+				dist = ((result.routes[0].legs[0].duration.value/60).toString());
+				//alert(dist);
+			}
+		});
+	}
+    
+	function fail(){
+		alert("fail"); // Could not obtain location
+    }
+</script>
+<script>	
+
+
+var JSONObject;
+function loadAndUpdateJSON(){
+	var JSONObjectLength=0;
+	$.getJSON('stanfordopennow.json', function(data) {
+  		JSONObject=data.StanfordEats;
+		JSONObjectLength=JSONObject.length;
+		updateJSONWithDistances(JSONObject);
+		generateList();
+		var fadeOutTime=1;
+		var typeOfFade="linear";
+		$("div.titleElems").click(function(event){
+			console.log("inside click titleelem");
+	  		var num= jQuery(this).attr("id").split("_")[1];
+			for (var i=0;i<JSONObject.length;  i++){
+	  			if(i!=parseInt(num)){
+	  				var invisibleId = "div.info_"+i;
+	  				$(invisibleId).hide();
+	  			}
+	  		}
+			var toggledId = "div.info_"+num;
+			var addId = "div.add_"+num;	
+			//alert($(addId).text());
+	  		calcRoute($(addId).text());	
+	  		$(toggledId).toggle();
+		});
+		
+		hideAllInfoBoxes();
+		
+		
+		
+
+  	}); 
+  }
+
+
+
+	var d=new Date();	
+	var weekday=new Array(7);
+	weekday[0]="Sunday";
+	weekday[1]="Monday";
+	weekday[2]="Tuesday";
+	weekday[3]="Wednesday";
+	weekday[4]="Thursday";
+	weekday[5]="Friday";
+	weekday[6]="Saturday";
+
+	var n = weekday[d.getDay()];
+
+	function alertThis(o, c, t){
+		if(o=="closed"){
+			return null;
+		}
+		openNumber = o.split(":")[0]+"."+o.split(":")[1];
+		if(o.split(":")[1].split(" ")[1]=="am"){
+			//alert(o);
+			if(o=="12:00 am"){
+			//alert("hi");
+			openNumber = parseFloat("0.00");
+			}
+			openNumber = parseFloat(openNumber);
+		}else{
+			openNumber = parseFloat(openNumber)+12.00;
+		}		
+		closedNumber = c.split(":")[0]+"."+c.split(":")[1];
+		if(c.split(":")[1].split(" ")[1]=="am"){
+			closedNumber = parseFloat(closedNumber);
+		}else{
+			closedNumber = parseFloat(closedNumber)+12.00;
+		}
+		
+		
+		var difference = closedNumber-openNumber;
+		if(difference>0){
+			if(parseFloat(t) >=openNumber && parseFloat(t)<= closedNumber){
+				return true;	
+			}else{
+				return false;
+			}
+		}else{
+			if(parseFloat(t) <openNumber && parseFloat(t)> closedNumber){
+				return false;	
+			}else{
+				return true;
+			}
+		}
+		
+				
+	}
+
+	function convertToTime(hours, minute){
+		if(minute<10){
+			return hours+".0"+minute;
+		}else{
+			return hours+"."+minute;
+		}
+	}
+
+	 function updateJSONWithDistances(JSONObject){
+	 
+	 		
+	 
+	 	for(i=0; i<JSONObject.length; i++){
+	 		console.log(JSONObject[i].name);
+	 		var origin = coords;
+	 		var dest = new google.maps.LatLng(JSONObject[i].lat.toString(),  JSONObject[i].lng.toString());
+			var milesAway = (google.maps.geometry.spherical.computeDistanceBetween(coords, dest)* 0.000621371).toFixed(2);
+			JSONObject[i].milesAway = milesAway;
+			//alert(milesAway);  
+ 		}		
+ 		console.log(JSONObject);
+ 		//alert("not yet");
+	 }
+	
+
+
+	currentTime=convertToTime(d.getHours(), d.getMinutes());
+	var hourTime = d.getHours();
+	var suffix = "am";
+	if(d.getHours()>12){
+		hourTime = d.getHours() - 12;
+		suffix = "pm";
+	}else{
+		hourTime = d.getHours();
+	}
+	if(d.getMinutes()<10){
+		minuteTime="0"+d.getMinutes();
+	}else{
+		minuteTime=d.getMinutes();
+	}
+	document.getElementById("jname").innerHTML+="<h2>It's "+n+" at "+hourTime+":"+minuteTime+" "+suffix+"</h2></br>";
+	var isWeekend=false;
+	var counter=1;
+	
+	function generateList(){
+		//alert(JSONObject.length);
+		for (var i=0;i<JSONObject.length;i++){
+			var openTime="closed";
+			var closeTime="closed";
+			if(d.getDay()==0){
+				openTime=JSONObject[i].SuOpen;
+				closeTime=JSONObject[i].SuClose;		
+			}else if(d.getDay()==1){
+				openTime=JSONObject[i].MOpen;
+				closeTime=JSONObject[i].MClose;		
+			}else if(d.getDay()==2){
+				openTime=JSONObject[i].TOpen;
+				closeTime=JSONObject[i].TClose;		
+			}else if(d.getDay()==3){
+				openTime=JSONObject[i].WOpen;
+				closeTime=JSONObject[i].WClose;		
+			}else if(d.getDay()==4){
+				openTime=JSONObject[i].ThOpen;
+				closeTime=JSONObject[i].ThClose;		
+			}else if(d.getDay()==5){
+				openTime=JSONObject[i].FOpen;
+				closeTime=JSONObject[i].FClose;		
+			}else if(d.getDay()==6){
+				openTime=JSONObject[i].SOpen;
+				closeTime=JSONObject[i].SClose;		
+			}
+			var displayCloseTime;
+			if(closeTime=="00:00 am"){
+				displayCloseTime="12:00 am";
+			}else{
+				displayCloseTime=closeTime;
+			}
+			JSONObject.sort(function(a,b){return a.milesAway - b.milesAway});
+			if(alertThis(openTime, closeTime, currentTime)){
+				document.getElementById("jname").innerHTML+="</br><div class=\"titleElems\" id=\"title_"+i+"\"><h2 style=\"display:inline;\" class=\"open\">"+counter+". "+JSONObject[i].name+"</h2><h5 style=\"display:inline\"> - "+JSONObject[i].milesAway+" miles away</h5></div> "
+				document.getElementById("jname").innerHTML+="<div class=\"infoboxes\"> <div class=\"info_"+i+"\"><p>"+openTime+" - "+displayCloseTime+"</p></div>";
+				document.getElementById("jname").innerHTML+="<div  class=\"info_"+i+"\"><div  class=\"add_"+i+"\"><a href=\"#map_canvas\">"+JSONObject[i].address+"</a></div></div>"
+				document.getElementById("jname").innerHTML+="<div class=\"info_"+i+"\"><p><a href=\"tel:+1"+JSONObject[i].phone+"\">"+JSONObject[i].phone+"</a></p></div></div>";
+				counter++;
+			}
+		}
+		for (var i=0;i<JSONObject.length;i++){
+			//alert("hi");
+			openTime="closed";
+			closeTime="closed";
+			if(d.getDay()==0){
+				openTime=JSONObject[i].SuOpen;
+				closeTime=JSONObject[i].SuClose;		
+			}else if(d.getDay()==1){
+				openTime=JSONObject[i].MOpen;
+				closeTime=JSONObject[i].MClose;		
+			}else if(d.getDay()==2){
+				openTime=JSONObject[i].TOpen;
+				closeTime=JSONObject[i].TClose;		
+			}else if(d.getDay()==3){
+				openTime=JSONObject[i].WOpen;
+				closeTime=JSONObject[i].WClose;		
+			}else if(d.getDay()==4){
+				openTime=JSONObject[i].ThOpen;
+				closeTime=JSONObject[i].ThClose;		
+			}else if(d.getDay()==5){
+				openTime=JSONObject[i].FOpen;
+				closeTime=JSONObject[i].FClose;		
+			}else if(d.getDay()==6){
+				openTime=JSONObject[i].SOpen;
+				closeTime=JSONObject[i].SClose;		
+			}
+			var displayCloseTime;
+			if(closeTime=="00:00 am"){
+				displayCloseTime="12:00 am";
+			}else{
+				displayCloseTime=closeTime;
+			}
+			JSONObject.sort(function(a,b){return a.milesAway - b.milesAway});
+			if(!alertThis(openTime, closeTime, currentTime)){
+				document.getElementById("jname").innerHTML+="</br><div class=\"titleElems\" id=\"title_"+i+"\"><h2 style=\"display:inline;\" class=\"closed\">"+counter+". "+JSONObject[i].name+"</h2></div> "
+				document.getElementById("jname").innerHTML+="<div class=\"infoboxes\"> <div class=\"info_"+i+"\"><p>"+openTime+" - "+displayCloseTime+"</p></div>";
+				document.getElementById("jname").innerHTML+="<div  class=\"info_"+i+"\"><div  class=\"add_"+i+"\"><a href=\"#map_canvas\">"+JSONObject[i].address+"</a></div></div>"
+				document.getElementById("jname").innerHTML+="<div class=\"info_"+i+"\"><p><a href=\"tel:+1"+JSONObject[i].phone+"\">"+JSONObject[i].phone+"</a></p></div></div>";
+				counter++;
+			}
+		}
+	}
+
+	
+
+	
+	function hideAllInfoBoxes(){
+		for (var i=0;i<JSONObject.length;  i++){
+	  		var invisibleId = "div.info_"+i;
+	  		$(invisibleId).hide();
+	  	}
+	}
+	
+</script>
+
+		</div>
+		<div id="nav" class="grid_4 omega ">
+			<div  id="map_canvas" style="border-right: 1px solid #666666; border-bottom: 1px solid #666666; border-top: 1px solid #AAAAAA; border-left: 1px solid #AAAAAA;"></div>
+
+		</div>
+		
+
+	</div>	
+		<script src="js/jquery.js"></script>	
+			</body>
+	</html>
